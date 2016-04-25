@@ -1,3 +1,30 @@
+# Cusomized Section
+*.txt
+*.png
+*~
+*.pdf
+*.jpeg
+*.mp4
+*.grd
+*.gri
+case*
+.*
+*.a
+*.orig
+out/
+build/
+Makefile
+out/**
+src/Makefile
+src/cmake_install.cmake
+config.xml
+cmake_install.cmake
+commands
+*.o
+*.so
+*.csv
+*os*
+
 # Compiled Object files
 *.slo
 *.lo

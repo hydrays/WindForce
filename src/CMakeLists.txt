@@ -1,0 +1,1 @@
+add_library(src dynamic_inverse_ising.cpp)
