@@ -191,22 +191,12 @@ double doInference( FactorGraph& fg, string algOpts, size_t maxIter, double tol,
 int main(int argc,char **argv) {
     cout << "This program is part of libDAI - http://www.libdai.org/" << endl;
     cout << "(Use the option -h for getting help with the command line arguments.)" << endl;
-    // Display program usage, when invoked from the command line with option '-h'
-    cimg_usage( "This example shows how libDAI can be used for a simple image segmentation task" );
-    // Get command line arguments
-    const char* file_i = cimg_option( "-i1", "example_img_in1.jpg", "Input image 1" );
-    const char* file_o = cimg_option( "-o1", "example_img_out1.jpg", "Output image (local evidence)" );
     const char *infname = "BP[updates=SEQMAX,maxiter=1,tol=1e-9,logdomain=0]";
     const size_t maxiter = 1000;
     const double tol = 1e-9;
     //const char *file_fg = "FactorGraph.fg";
     const char *file_fg;
     double pm25_min, pm25_max;
-
-    // // Read input images
-    // cout << endl;
-    // cout << "Reading input image 1 (" << file_i << ")..." << endl;
-    // CImg<unsigned char> image1 = CImg<>( file_i );
 
     GDALAllRegister();
     int Ndim, Mdim;

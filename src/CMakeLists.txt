@@ -1,1 +1,1 @@
-add_library(src dynamic_inverse_ising.cpp)
+add_library(src dynamic_inverse_ising.cpp evidence.cpp)
