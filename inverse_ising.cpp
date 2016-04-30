@@ -70,7 +70,7 @@ int main()
     printf("L-BFGS optimization terminated with status code = %d, lambda=%f\n",status, x[N-2]);
 
     dynamic_inverse_ising.update_using_x(x);
-    dynamic_inverse_ising.output_result();
+    dynamic_inverse_ising.output_result(x);
     for (int i=0; i<N; i++)
     {
         printf("%f \n", x[i]);

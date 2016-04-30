@@ -18,11 +18,6 @@ int pm25_to_sigma(double pm25)
     getchar();
 }
 
-int prob_to_pm25(double p, double pm25_max, double pm25_min)
-{
-    return pm25_min + p* (pm25_max - pm25_min); 
-}
-
 FactorGraph img2fg( double * s, double ** JJ, int * sigma, int Ndim, int Mdim)
 {
     vector<Var> vars;
@@ -147,60 +142,15 @@ FactorGraph img2fg( double * s, double ** JJ, int * sigma, int Ndim, int Mdim)
     return FactorGraph( factors.begin(), factors.end(), vars.begin(), vars.end(), factors.size(), vars.size() );
 }
 
-double doInference( FactorGraph& fg, string algOpts, size_t maxIter, double tol, vector<double> &m, size_t Ndim, size_t Mdim ) {
-    // Construct inference algorithm
-    cout << "Inference algorithm: " << algOpts << endl;
-    cout << "Constructing inference algorithm object..." << endl;
-    InfAlg* ia = newInfAlgFromString( algOpts, fg );
+int main() 
+{
+    /* ***************** */
+    /* Initialization    */
+    /* ***************** */
 
-    // Initialize inference algorithm
-    cout << "Initializing inference algorithm..." << endl;
-    ia->init();
-
-    // Initialize vector for storing the magnetizations
-    m = vector<double>( fg.nrVars(), 0.0 );
-    cout << "nrVars " << fg.nrVars() << "\n";
-    
-    // maxDiff stores the current convergence level
-    double maxDiff = 1.0;
-    
-    // Iterate while maximum number of iterations has not been
-    // reached and requested convergence level has not been reached
-    cout << "Starting inference algorithm..." << endl;
-    for( size_t iter = 0; iter < maxIter && maxDiff > tol; iter++ ) {
-	// Set magnetizations to beliefs
-	for( size_t i = 0; i < fg.nrVars(); i++ )
-	    m[i] = ia->beliefV(i)[1] - ia->beliefV(i)[0];
-
-	// Perform the requested inference algorithm for only one step
-	ia->setMaxIter( iter + 1 );
-	maxDiff = ia->run();
-
-	// Output progress
-	cout << "  Iterations = " << iter << ", maxDiff = " << maxDiff << endl;
-    }
-    cout << "Finished inference algorithm" << endl;
-
-    // Clean up inference algorithm
-    delete ia;
-
-    // Return reached convergence level
-    return maxDiff;
-}
-
-int main(int argc,char **argv) {
-    cout << "This program is part of libDAI - http://www.libdai.org/" << endl;
-    cout << "(Use the option -h for getting help with the command line arguments.)" << endl;
-    const char *infname = "BP[updates=SEQMAX,maxiter=1,tol=1e-9,logdomain=0]";
-    const size_t maxiter = 1000;
-    const double tol = 1e-9;
-    //const char *file_fg = "FactorGraph.fg";
-    const char *file_fg;
-    double pm25_min, pm25_max;
-
-    GDALAllRegister();
+    /* Get Ndim, Mdim */
     int Ndim, Mdim;
-
+    GDALAllRegister();
     const char *pszFormat = "GTiff";
     GDALDriver *poDriver;
     char **papszMetadata;
@@ -208,17 +158,47 @@ int main(int argc,char **argv) {
     if( poDriver == NULL )
 	exit( 1 );
     papszMetadata = poDriver->GetMetadata();
-
     const char * pszSrcFilename = "SampleTiff.tif";
     GDALDataset *poSrcDS =
 	(GDALDataset *) GDALOpen( pszSrcFilename, GA_ReadOnly );
     Ndim = poSrcDS->GetRasterXSize();
     Mdim = poSrcDS->GetRasterYSize();
     GDALClose( (GDALDatasetH) poSrcDS );
-
     long int L = Ndim*Mdim;
     cout << "Ndim = " << Ndim << " Mdim = " << Mdim << "\n";
 
+    /* *********************** */
+    /* Read network parameters */
+    /* *********************** */
+    double alpha, beta, lambda;
+    double * s0;
+    s0 = new double[L];
+    if(s0==NULL)
+    {
+	std::cout<<"Allocating storage for s0 FAILED!"<< "\n";
+	return -1;
+    }
+    std::string input_file_name = "result.txt";
+    FILE * fp;
+    if ( (fp = fopen(input_file_name.c_str(), "r")) == NULL )
+    {
+	std::cout << "file open failed. \n";
+	getchar();
+    }
+    double temp;
+    for ( int i=0; i<L; i++)
+    {    
+	fscanf(fp, "%lf\n", &temp);
+	s0[i] = temp;
+    }
+    fscanf(fp, "%lf\n", &alpha);
+    fscanf(fp, "%lf\n", &beta);
+    fscanf(fp, "%lf\n", &lambda);
+    fclose(fp);
+    
+    /* ***************** */
+    /* Allocate Memory   */
+    /* ***************** */
     double * PM25Matrix;
     double * WindMatrix1;
     double * WindMatrix2;
@@ -231,11 +211,11 @@ int main(int argc,char **argv) {
 	return -1;
     }
     double ** JJ;
-    double * s;
+    double * s_total;
     int * sigma;
-    s = new double[L];
+    s_total = new double[L];
     sigma = new int[L];
-    if(s==NULL | sigma==NULL)
+    if(s_total==NULL | sigma==NULL)
     {
 	std::cout<<"Allocating storage for WeightMatrix FAILED!"<< "\n";
 	return -1;
@@ -256,34 +236,9 @@ int main(int argc,char **argv) {
 	}
     }
 
-    std::string input_file_name = "result.txt";
-    FILE * fp;
-    double lambda;
-    if ( (fp = fopen(input_file_name.c_str(), "r")) == NULL )
-    {
-	std::cout << "file open failed. \n";
-	getchar();
-    }
-    fscanf(fp, "%lf\n", &lambda);
-    fclose(fp);
-
-    // pm25_max = 1.0;
-    // pm25_min = 1000.0;
-    // for ( int i=0; i<L; i++)
-    // {
-    // 	if (PM25Matrix[i] > 0.0)
-    // 	{
-    // 	    if (PM25Matrix[i] > pm25_max)
-    // 	    {
-    // 		pm25_max = PM25Matrix[i];
-    // 	    }
-    // 	    if (PM25Matrix[i] < pm25_max)
-    // 	    {
-    // 		pm25_min = PM25Matrix[i];
-    // 	    }
-    // 	}
-    // }
-
+    /* ***************** */
+    /* Data processing   */
+    /* ***************** */
     std::string data_path = "../data/";
     std::string output_path = "../evidence/sigma_";
     std::string in_file_list_name = data_path + "filelist.txt";
@@ -296,6 +251,7 @@ int main(int argc,char **argv) {
 
     char in_data_file_name_part[200];
     std::string in_data_file_name;
+    /* For every file in the "filelist.txt", read in data and fill missing value */
     while(fscanf(in_file_list, "%s", in_data_file_name_part)!=EOF)
     {
 	in_data_file_name = data_path + in_data_file_name_part;
@@ -312,8 +268,8 @@ int main(int argc,char **argv) {
 	poBand = poSrcDS->GetRasterBand(4);
 	poBand->RasterIO( GF_Read, 0, 0, Ndim, Mdim,
 			  WindMatrix2, Ndim, Mdim, GDT_Float64, 0, 0 );
-
     
+	/* compute pm25_mean, which is a feature of the network */
 	int nrecords = 0;
 	double pm25_mean = 0.0;
 	for ( int i=0; i<L; i++)
@@ -327,9 +283,10 @@ int main(int argc,char **argv) {
 	pm25_mean = pm25_mean / nrecords;
 	pm25_mean = 0.01*pm25_mean;
     
+	/* prepare network */
 	for ( int i=0; i<L; i++)
 	{
-	    s[i] = 0.0 + lambda*pm25_mean;
+	    s_total[i] = 0.0 + lambda*pm25_mean;
 	    sigma[i] = pm25_to_sigma(PM25Matrix[i]);
 	    //sigma[i] = -99999;
 	    //cout << i << " " << PM25Matrix[i] << " " << sigma[i] << "\n";
@@ -339,31 +296,27 @@ int main(int argc,char **argv) {
 	    }
 	}
 
-	// Make factor graph 
-	FactorGraph fg = img2fg( s, JJ, sigma, Ndim, Mdim );
-
+	/* make factor graph, the outcome is a network of unknowns */
+	FactorGraph fg = img2fg( s_total, JJ, sigma, Ndim, Mdim );
+	//const char *file_fg = "FactorGraph.fg";
 	// if( strlen( file_fg ) > 0 ) {
 	//     cout << "Saving factor graph as " << file_fg << endl;
 	//     fg.WriteToFile( file_fg );
 	// }
 
-	// Solve the inference problem and visualize 
-	vector<double> m; // Stores the final magnetizations
-	//doInference( fg, infname, maxiter, tol, m, Ndim, Mdim );
-	
+	/* inference all the unknowns using Gibbs sampling */
 	PropertySet gibbsProps;
 	gibbsProps.set("maxiter", size_t(5000));   // number of Gibbs sampler iterations
 	gibbsProps.set("burnin", size_t(4000));
 	gibbsProps.set("verbose", size_t(0));
 	Gibbs gibbsSampler( fg, gibbsProps );
-	
 	vector<size_t> mm;
 	gibbsSampler.init();
 	gibbsSampler.run();
 	mm = gibbsSampler.state();
 	//cout << "size mm" << mm.size() << "\n";
 
-	// Visualize the final magnetizations
+	/* generate the full state sigma: observed + inferred */
 	int index = 0;
 	for( size_t i = 0; i < L; i++ )
 	{
@@ -375,6 +328,7 @@ int main(int argc,char **argv) {
 	    //cout << "result " << i << " " << sigma[i] << "\n";
 	}
 
+	/* output full state */
 	std::string out_file_name;
 	out_file_name = output_path + in_data_file_name_part;	
 	std::cout << out_file_name << std::endl;
@@ -395,7 +349,6 @@ int main(int argc,char **argv) {
 	poBand = poDstDS->GetRasterBand(4);
 	poBand->RasterIO( GF_Write, 0, 0, Ndim, Mdim,
 			  WindMatrix2, Ndim, Mdim, GDT_Float64, 0, 0 );
-
 	GDALClose( (GDALDatasetH) poDstDS );
 	GDALClose( (GDALDatasetH) poSrcDS );
     }

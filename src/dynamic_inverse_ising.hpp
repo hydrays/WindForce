@@ -14,11 +14,12 @@
 class DynamicInverseIsing
 {
 public:
-    double lambda;
+    double alpha;
     double beta;
+    double lambda;
     int Ndim, Mdim;
     long int L;
-    double * learned_s;
+    double * learned_s0;
     std::string output_file_name;
     std::string input_path;
     std::vector<Evidence> evidence_list;
@@ -33,7 +34,7 @@ public:
     //int pm25_to_sigma(double);
     //int get_pm25_mean();
     double evaluate(const int, const double *, double *);
-    int output_result();
+    int output_result(const double *);
 };
 
 #endif /* DYANMIC_INVERSE_ISING_HPP_ */

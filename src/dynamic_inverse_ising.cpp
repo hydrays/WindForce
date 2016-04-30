@@ -22,10 +22,10 @@ int DynamicInverseIsing::init()
     output_file_name = "result.txt";
     input_path = "../evidence/";
 
-    learned_s = new double[L];
-    if(learned_s==NULL)
+    learned_s0 = new double[L];
+    if(learned_s0==NULL)
     {
-	std::cout<<"Allocating storage for WeightMatrix FAILED!"<< "\n";
+	std::cout<<"Allocating storage for learned_s0 FAILED!"<< "\n";
 	return -1;
     }
     return 0;
@@ -95,7 +95,7 @@ int DynamicInverseIsing::update_using_x(double * x)
 {
     for (int i=0; i<L; i++)
     {
-	learned_s[i] = x[i];
+	learned_s0[i] = x[i];
     }
     lambda = x[L];
     beta = x[L+1];
@@ -118,6 +118,7 @@ int DynamicInverseIsing::make_initial(double * x)
 
 double DynamicInverseIsing::evaluate(const int N, const double * x, double * g)
 {
+    /* N is the number of unknowns to be solved. In our case N = L + 3 */
     double SL = 0.0;
     double A1, B1;
     double Pr;
@@ -173,7 +174,7 @@ double DynamicInverseIsing::evaluate(const int N, const double * x, double * g)
     return SL;
 }
 
-int DynamicInverseIsing::output_result()
+int DynamicInverseIsing::output_result(const double * x)
 {
     FILE * fp;
     if ( (fp = fopen(output_file_name.c_str(), "w")) == NULL )
@@ -181,6 +182,16 @@ int DynamicInverseIsing::output_result()
 	std::cout << "file open failed. \n";
 	getchar();
     }
+    for (int i=0; i<L; i++)
+    {
+	learned_s0[i] = x[i];
+	fprintf(fp, "%f\n", learned_s0[i]);
+    }    
+    alpha = -1.0;
+    fprintf(fp, "%f\n", alpha);
+    beta = x[L];
+    fprintf(fp, "%f\n", beta);
+    lambda = x[L+1];
     fprintf(fp, "%f\n", lambda);
     fclose(fp);
     return 0;
