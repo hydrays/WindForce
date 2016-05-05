@@ -46,7 +46,7 @@ int main()
     dynamic_inverse_ising.init();
     dynamic_inverse_ising.getEvidence();
 
-    int N = dynamic_inverse_ising.L + 2;
+    int N = dynamic_inverse_ising.L + 3;
     x = new double[N];
     if(x==NULL)
     {
@@ -67,14 +67,14 @@ int main()
   
     //int status = lbfgs(L+1,ss,&SL,evaluate,progress,NULL,&param);
     int status = lbfgs(N,x,&SL,evaluate,progress,&dynamic_inverse_ising,&param);
-    printf("L-BFGS optimization terminated with status code = %d, lambda=%f\n",status, x[N-2]);
+    printf("L-BFGS optimization terminated with status code = %d, lambda=%f\n",status, x[N-1]);
 
     dynamic_inverse_ising.update_using_x(x);
     dynamic_inverse_ising.output_result(x);
-    for (int i=0; i<N; i++)
-    {
-        printf("%f \n", x[i]);
-    }
+    // for (int i=0; i<N; i++)
+    // {
+    //     printf("%f \n", x[i]);
+    // }
     return 0;
 }	
 	

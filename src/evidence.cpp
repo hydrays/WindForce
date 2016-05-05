@@ -21,9 +21,10 @@ int Evidence::init(int N, int M)
     L = Ndim * Mdim;
 	    
     sigma = new int[L];
-    if(sigma==NULL)
+    valid_grid_list = new int[L];
+    if(sigma==NULL | valid_grid_list==NULL)
     {
-	std::cout<<"Allocating storage for WeightMatrix FAILED!"<< "\n";
+	std::cout<<"Allocating storage for sigma FAILED!"<< "\n";
 	return -1;
     }
     PM25Matrix = new double[L];
@@ -57,22 +58,22 @@ int Evidence::init(int N, int M)
     }
 };
 
-int Evidence::compute_ising_network()
-{
-    for ( int i=0; i<L; i++)
-    {
-	s[i] = 0.0;
-	//ss[i] = s[i];
-	//sigma[i] = pm25_to_sigma(PM25Matrix[i]);
-	//sigma[i] = -99999;
-	//std::cout << i << " " << PM25Matrix[i] << " " << sigma[i] << "\n";
-	for ( int j=0; j<L; j++)
-	{
-	    JJ[i][j] = 0.01;
-	}
-    }
-    return 0;
-};
+// int Evidence::compute_ising_network()
+// {
+//     for ( int i=0; i<L; i++)
+//     {
+// 	s[i] = 0.0;
+// 	//ss[i] = s[i];
+// 	//sigma[i] = pm25_to_sigma(PM25Matrix[i]);
+// 	//sigma[i] = -99999;
+// 	//std::cout << i << " " << PM25Matrix[i] << " " << sigma[i] << "\n";
+// 	for ( int j=0; j<L; j++)
+// 	{
+// 	    JJ[i][j] = 0.01;
+// 	}
+//     }
+//     return 0;
+// };
 
 int Evidence::get_pm25_mean()
 {

@@ -16,6 +16,7 @@ public:
     double ** JJ;
     double * s;
     int * sigma;
+    int * valid_grid_list;
     double * PM25Matrix;
     double * WindMatrix1;
     double * WindMatrix2;
@@ -26,7 +27,7 @@ public:
 public:
     int drop();
     int init(int N, int M);
-    int compute_ising_network();
+    //int compute_ising_network();
     int get_pm25_mean();
 };
 #endif /* EVIDENCE_HPP_ */

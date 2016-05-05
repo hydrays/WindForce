@@ -72,10 +72,22 @@ int DynamicInverseIsing::getEvidence()
 			  evidence.WindMatrix2, Ndim, Mdim, GDT_Float64, 0, 0 );
 
 	GDALClose( (GDALDatasetH) poSrcDS );
+	for (int i=0; i<L; i++)
+	{
+	    if(evidence.PM25Matrix[i] < 0)
+	    {
+		evidence.valid_grid_list[i] = -1;
+	    }
+	    else
+	    {
+		evidence.valid_grid_list[i] = 1;
+	    }
+	}
+
 	//std::cout << "here0" << "\n";
 	evidence.get_pm25_mean();
 	//std::cout << "here1" << "\n";
-	evidence.compute_ising_network();
+	//evidence.compute_ising_network();
 	//std::cout << "here2" << "\n";
 	evidence_list.push_back(evidence);
 	//std::cout << "here3" << "\n";
@@ -97,8 +109,9 @@ int DynamicInverseIsing::update_using_x(double * x)
     {
 	learned_s0[i] = x[i];
     }
-    lambda = x[L];
+    alpha = x[L];
     beta = x[L+1];
+    lambda = x[L+2];
     return 0;
 }
 
@@ -132,36 +145,70 @@ double DynamicInverseIsing::evaluate(const int N, const double * x, double * g)
     {
 	for(int r=0;r<L;r++) 
 	{	
-	    iter->s[r] = x[r] + x[L]*iter->pm25_mean;
 	    for ( int j=0; j<L; j++)
 	    {
-		iter->JJ[r][j] = 0.01*x[L+1];
+		iter->JJ[r][j] = -1.0;
+	    }
+
+	}
+	for(int r=0;r<L;r++) 
+	{	
+	    iter->s[r] = x[r] + x[L+2]*iter->pm25_mean;
+	    for ( int j=0; j<L; j++)
+	    {
+		if ( (r+1)%Mdim>0 )
+		{
+		    iter->JJ[r][j] = 0.01*x[L+1];
+		}
+		if ( r%Mdim>0 )
+		{
+		    iter->JJ[r][j] = 0.01*x[L+1];
+		}
+		if (r-Mdim >= 0)
+		{
+		    iter->JJ[r][j] = 0.01*x[L+1];
+		}
+		if (r+Mdim < L)
+		{
+		    iter->JJ[r][j] = 0.01*x[L+1];
+		}
 	    }
 	}
 	//std::cout << "hereEVA1" << "\n";
 	for(int r=0;r<L;r++) 
 	{	
-	    A1 = 0.0;
-	    B1 = 0.0;
-	    for ( int i=0; i<L; i++ )
+	    if (iter->valid_grid_list[r] == 1)
 	    {
-		if ( (i==r+1) || (i==r-1) || (i==r-Mdim) || (i==r+Mdim))
+		A1 = 0.0;
+		B1 = 0.0;
+		for ( int i=0; i<L; i++ )
 		{
-		    //printf("***>>>>>>*** \n");
-		    A1 = A1 + iter->JJ[i][r] * iter->sigma[i] + 
-			iter->JJ[r][i] * iter->sigma[i];
-		    B1 = B1 + 0.01 * iter-> sigma[i] + 0.01 * iter->sigma[i];
+		    if ( (i==r+1) || (i==r-1) || (i==r-Mdim) || (i==r+Mdim))
+		    {
+			//printf("***>>>>>>*** \n");
+			if ( iter->JJ[i][r] >= 0 )
+			{
+			    if (iter->JJ[r][i] < 0)
+			    {
+				printf("something wrong.\n");
+				getchar();
+			    }
+			    A1 = A1 + iter->JJ[i][r] * iter->sigma[i] + 
+				iter->JJ[r][i] * iter->sigma[i];
+			    B1 = B1 + 0.01 * iter-> sigma[i] + 0.01 * iter->sigma[i];
+			}
+		    }
 		}
+		//printf("***---*** %.10f, %.10f\n", A1, iter->s[r]);
+		A1 = -2.0*iter->sigma[r]*(iter->s[r] + A1);
+		Pr = 1.0/(1.0+exp(A1));
+		SL = SL - log(Pr);
+		g[r] = g[r] - (1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]))/((1.0+exp(A1))*(1.0+exp(A1)));
+		g[L] = 0.0;
+		g[L+1] = g[L+1] - (1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]*B1))/((1.0+exp(A1))*(1.0+exp(A1)));
+		g[L+2] = g[L+2] - (1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]*iter->pm25_mean))/((1.0+exp(A1))*(1.0+exp(A1)));
+		//printf("***>>>*** %.10f, %.10f \n", A1, Pr);
 	    }
-	    //printf("***---*** %.10f, %.10f\n", A1, iter->s[r]);
-	    A1 = -2.0*iter->sigma[r]*(iter->s[r] + A1);
-	    Pr = 1.0/(1.0+exp(A1));
-	    SL = SL - log(Pr);
-	    g[L] = g[L] - (1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]*iter->pm25_mean))/((1.0+exp(A1))*(1.0+exp(A1)));
-	    g[L+1] = g[L+1] - 
-		(1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]*B1))/((1.0+exp(A1))*(1.0+exp(A1)));
-	    g[r] = g[r] - (1.0/Pr)*(exp(A1)*(2.0*iter->sigma[r]))/((1.0+exp(A1))*(1.0+exp(A1)));
-	    //printf("***>>>*** %.10f, %.10f \n", A1, Pr);
 	}
 	//std::cout << "hereEVA10" << "\n";
     }
@@ -187,11 +234,11 @@ int DynamicInverseIsing::output_result(const double * x)
 	learned_s0[i] = x[i];
 	fprintf(fp, "%f\n", learned_s0[i]);
     }    
-    alpha = -1.0;
+    alpha = x[L];
     fprintf(fp, "%f\n", alpha);
-    beta = x[L];
+    beta = x[L+1];
     fprintf(fp, "%f\n", beta);
-    lambda = x[L+1];
+    lambda = x[L+2];
     fprintf(fp, "%f\n", lambda);
     fclose(fp);
     return 0;
